@@ -151,7 +151,7 @@ def encode_video_frames(
     imgs_dir = Path(imgs_dir)
     video_path.parent.mkdir(parents=True, exist_ok=overwrite)
 
-    if (vcodec == "libsvtav1" or vcodec == "hevc") and pix_fmt == "yuv444p":
+    if vcodec == "libsvtav1" and pix_fmt == "yuv444p":
         pix_fmt = "yuv420p"
 
     template = "frame_" + ("[0-9]" * 6) + ".png"
@@ -161,8 +161,8 @@ def encode_video_frames(
 
     if len(input_list) == 0:
         raise FileNotFoundError(f"No images found in {imgs_dir}.")
-    dummy_image = Image.open(input_list[0])
-    width, height = dummy_image.size
+    with Image.open(input_list[0]) as dummy_image:
+        width, height = dummy_image.size
 
     video_options = {}
     if g is not None: video_options["g"] = str(g)
@@ -182,8 +182,8 @@ def encode_video_frames(
         output_stream.height = height
 
         for input_data in input_list:
-            input_image = Image.open(input_data).convert("RGB")
-            input_frame = av.VideoFrame.from_image(input_image)
+            with Image.open(input_data) as input_image:
+                input_frame = av.VideoFrame.from_image(input_image.convert("RGB"))
             packet = output_stream.encode(input_frame)
             if packet:
                 output.mux(packet)

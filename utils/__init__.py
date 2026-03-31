@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Tuple
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
+from .rgb_pose_dataset import RGBPosePoint, RGBPoseSourceInfo, RGBPoseTrajectory, RGBPoseTrajectorySource
+
 def get_task_idx(ds: LeRobotDataset, task: str) -> int:
     """Get the index of a task, adding it if it doesn't exist."""
     task_index = ds.meta.get_task_index(task)
