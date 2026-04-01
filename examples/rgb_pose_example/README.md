@@ -27,4 +27,60 @@ uv run rgb_pose_to_lerobot.py \
 uv run examples/rgb_pose_example/visualize_episode.py --dataset_dir path/to/dataset --episode_index episode_index --output output_name.mp4
 ```
 
+## Supported Formats
 
+### 1. Video2Poses（`RealWalkingRGBPoseSource`）
+
+适用于 [Video2Poses](https://github.com/XieWeikai/Video2Poses) 仓库生成的数据。每条轨迹对应一个 `*-camera.json`文件和一个 `.mp4` 视频文件。
+
+**输入目录结构：**
+```
+raw_dir/
+├── video_id_1-camera.json   # 含每帧的 4×4 cam2world 位姿、内参、坐标系约定
+├── video_id_2-camera.json
+└── ...
+```
+
+- **位姿格式**：4×4 齐次变换矩阵（cam2world），OpenCV 相机坐标系
+- **FPS**：由 manifest 中的 `sample_fps` 字段指定
+- **内参**：manifest 中每帧提供 `fx, fy, cx, cy`
+
+**示例命令：**
+```bash
+uv run rgb_pose_to_lerobot.py \
+    --raw_dir path/to/video2poses-output \
+    --source_cls examples.rgb_pose_example.real_walking_source:RealWalkingRGBPoseSource \
+    --output_dir ./tmp --dataset_name my-walking-dataset
+```
+
+### 2. CityWalker（`CityWalkerRGBPoseSource`）
+
+适用于 [CityWalker](https://github.com/ai4ce/CityWalker) 数据集。轨迹由文本格式的位姿文件和逐帧 JPEG 图片组成，位姿来自 DPVO 单目视觉里程计。
+
+**输入目录结构：**
+```
+raw_dir/
+├── pose_label/
+│   ├── pose_traj_01.txt      # 每 3 行一帧：GPS / 位姿 / 场景类别
+│   ├── pose_traj_02.txt
+│   └── ...
+└── obs/
+    ├── traj_nav_01/
+    │   ├── forward_0000.jpg  # 400×400 RGB
+    │   ├── forward_0001.jpg
+    │   └── ...
+    ├── traj_nav_02/
+    └── ...
+```
+
+- **位姿格式**：6D `[tx, ty, tz, rx, ry, rz]`，平移单位为米，旋转为轴角（弧度），OpenCV 相机坐标系
+- **FPS**：1（位姿标注采样率约每秒一帧）
+- **内参**：无（DPVO 不依赖标定）
+
+**示例命令：**
+```bash
+uv run rgb_pose_to_lerobot.py \
+    --raw_dir path/to/CityWalker \
+    --source_cls examples.rgb_pose_example.citywalker_source:CityWalkerRGBPoseSource \
+    --output_dir path/to/output --dataset_name citywalker-lerobot
+```
