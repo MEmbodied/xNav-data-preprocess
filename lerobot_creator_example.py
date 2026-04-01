@@ -24,6 +24,8 @@ from typing import Iterable, Tuple
 
 import numpy as np
 
+from lerobot.datasets.lerobot_dataset import LeRobotDatasetMetadata
+
 from utils import Trajectories, Traj
 from utils.lerobot.lerobot_creater import LeRobotCreator
 
@@ -316,8 +318,35 @@ def main():
     #   3. 所有元数据刷盘（info.json, tasks.jsonl, episodes.jsonl 等）
     creator.wait()
 
+    # -----------------------------------------------------------------------
+    # Step 5: 验证生成的数据集完整性
+    # -----------------------------------------------------------------------
+    # 检查所有 episode 的 parquet 和 video 文件是否存在且可加载。
+    # 这一步能尽早发现编码失败、文件缺失等问题。
+    validate_dataset(repo_id=args.dataset_name, root=root)
+
     elapsed = time.time() - start
     logging.info("Done! %d episodes in %.2fs -> %s", len(trajectories), elapsed, root)
+
+
+def validate_dataset(repo_id: str, root: Path):
+    """Post-export integrity check: ensure metadata can be loaded and all files are present."""
+    meta = LeRobotDatasetMetadata(repo_id, root=root)
+
+    if meta.total_episodes == 0:
+        raise ValueError("Number of episodes is 0.")
+
+    for ep_idx in range(meta.total_episodes):
+        data_path = meta.root / meta.get_data_file_path(ep_idx)
+        if not data_path.exists():
+            raise ValueError(f"Parquet file is missing: {data_path}")
+
+        for vid_key in meta.video_keys:
+            vid_path = meta.root / meta.get_video_file_path(ep_idx, vid_key)
+            if not vid_path.exists():
+                raise ValueError(f"Video file is missing: {vid_path}")
+
+    logging.info("Validation passed: %d episodes, all parquet and video files present.", meta.total_episodes)
 
 
 if __name__ == "__main__":
