@@ -4733,63 +4733,6 @@ wheels = [
 ]
 
 [[package]]
-name = "uavflow2lerobot"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "ffmpeg" },
-    { name = "json-numpy" },
-    { name = "lerobot" },
-    { name = "matplotlib" },
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "open3d" },
-    { name = "opencv-python" },
-    { name = "pillow" },
-    { name = "tqdm" },
-]
-
-[package.dev-dependencies]
-base = [
-    { name = "pandas" },
-    { name = "pyarrow" },
-]
-dev = [
-    { name = "ipykernel" },
-    { name = "jupyterlab" },
-    { name = "notebook" },
-    { name = "py-spy" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ffmpeg", specifier = ">=1.4" },
-    { name = "json-numpy", specifier = ">=2.1.1" },
-    { name = "lerobot", specifier = "==0.3.3" },
-    { name = "matplotlib", specifier = ">=3.10.6" },
-    { name = "numpy", specifier = ">=2.2.6" },
-    { name = "open3d", specifier = ">=0.19.0" },
-    { name = "opencv-python", specifier = ">=4.11.0.86" },
-    { name = "pillow", specifier = ">=11.3.0" },
-    { name = "tqdm", specifier = ">=4.67.1" },
-]
-
-[package.metadata.requires-dev]
-base = [
-    { name = "pandas", specifier = ">=2.3.2" },
-    { name = "pyarrow", specifier = ">=21.0.0" },
-]
-dev = [
-    { name = "ipykernel", specifier = ">=6.30.1" },
-    { name = "jupyterlab", specifier = ">=4.4.9" },
-    { name = "notebook", specifier = ">=7.4.7" },
-    { name = "py-spy", specifier = ">=0.4.1" },
-    { name = "scipy", specifier = ">=1.15.3" },
-]
-
-[[package]]
 name = "uri-template"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4882,6 +4825,63 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9f/69/83029f1f6300c5fb2471d621ab06f6ec6b3324685a2ce0f9777fd4a8b71e/werkzeug-3.1.3.tar.gz", hash = "sha256:60723ce945c19328679790e3282cc758aa4a6040e4bb330f53d30fa546d44746", size = 806925, upload-time = "2024-11-08T15:52:18.093Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl", hash = "sha256:54b78bf3716d19a65be4fceccc0d1d7b89e608834989dfae50ea87564639213e", size = 224498, upload-time = "2024-11-08T15:52:16.132Z" },
+]
+
+[[package]]
+name = "xnav-data-utils"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "ffmpeg" },
+    { name = "json-numpy" },
+    { name = "lerobot" },
+    { name = "matplotlib" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "open3d" },
+    { name = "opencv-python" },
+    { name = "pillow" },
+    { name = "tqdm" },
+]
+
+[package.dev-dependencies]
+base = [
+    { name = "pandas" },
+    { name = "pyarrow" },
+]
+dev = [
+    { name = "ipykernel" },
+    { name = "jupyterlab" },
+    { name = "notebook" },
+    { name = "py-spy" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ffmpeg", specifier = ">=1.4" },
+    { name = "json-numpy", specifier = ">=2.1.1" },
+    { name = "lerobot", specifier = "==0.3.3" },
+    { name = "matplotlib", specifier = ">=3.10.6" },
+    { name = "numpy", specifier = ">=2.2.6" },
+    { name = "open3d", specifier = ">=0.19.0" },
+    { name = "opencv-python", specifier = ">=4.11.0.86" },
+    { name = "pillow", specifier = ">=11.3.0" },
+    { name = "tqdm", specifier = ">=4.67.1" },
+]
+
+[package.metadata.requires-dev]
+base = [
+    { name = "pandas", specifier = ">=2.3.2" },
+    { name = "pyarrow", specifier = ">=21.0.0" },
+]
+dev = [
+    { name = "ipykernel", specifier = ">=6.30.1" },
+    { name = "jupyterlab", specifier = ">=4.4.9" },
+    { name = "notebook", specifier = ">=7.4.7" },
+    { name = "py-spy", specifier = ">=0.4.1" },
+    { name = "scipy", specifier = ">=1.15.3" },
 ]
 
 [[package]]

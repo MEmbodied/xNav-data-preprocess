@@ -1,7 +1,7 @@
 [project]
-name = "uavflow2lerobot"
+name = "xNav-data-utils"
 version = "0.1.0"
-description = "Add your description here"
+description = "Processing utilities for xNav data"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

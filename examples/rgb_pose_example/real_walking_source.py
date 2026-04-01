@@ -72,12 +72,10 @@ class RealWalkingTrajectory(RGBPoseTrajectory):
 
     @property
     def metadata(self) -> dict[str, Any]:
+        k = self._camera_intrinsics_mean
         return {
-            "camera_convention": self.manifest["coordinate_system"]["camera_convention"],
-            "camera_axes": self.manifest["coordinate_system"]["axes"],
-            "camera_pose_type": self.manifest["coordinate_system"]["camera_pose_type"],
-            "K": self._camera_intrinsics_mean,
-            "T_b_c": self.body_from_camera,
+            "video.ego_view.K": [k["fx"], k["fy"], k["cx"], k["cy"]],
+            "video.ego_view.body_from_camera": self.body_from_camera,
         }
 
     def __len__(self) -> int:

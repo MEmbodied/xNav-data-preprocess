@@ -111,12 +111,8 @@ class CityWalkerTrajectory(RGBPoseTrajectory):
     @property
     def metadata(self) -> dict[str, Any]:
         return {
-            "camera_convention": "OpenCV",
-            "camera_axes": "+X right, +Y down, +Z forward",
-            "camera_pose_type": "cam2world",
-            "K": None,  # no intrinsics available
-            "T_b_c": _BODY_FROM_CAMERA_OPENCV,
-            "source_traj_id": self._traj_id,
+            "video.ego_view.K": None,  # no intrinsics available
+            "video.ego_view.body_from_camera": _BODY_FROM_CAMERA_OPENCV,
         }
 
     def __len__(self) -> int:
