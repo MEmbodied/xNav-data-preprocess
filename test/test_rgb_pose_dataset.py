@@ -48,7 +48,6 @@ class MockRGBPoseSource(RGBPoseTrajectorySource):
             body_from_camera=np.eye(4, dtype=np.float32),
             robot_type="mock_uav",
             task="",
-            source_name="mock_source",
         )
 
         self._trajectories = [
@@ -120,8 +119,6 @@ class RGBPoseDatasetTests(unittest.TestCase):
 
             with open(root / "meta" / "info.json", "r", encoding="utf-8") as file:
                 info = json.load(file)
-            with open(root / "meta" / "source_info.json", "r", encoding="utf-8") as file:
-                source_info = json.load(file)
             with open(root / "meta" / "tasks.jsonl", "r", encoding="utf-8") as file:
                 tasks = [json.loads(line) for line in file if line.strip()]
             with open(root / "meta" / "episodes_extras.jsonl", "r", encoding="utf-8") as file:
@@ -129,10 +126,8 @@ class RGBPoseDatasetTests(unittest.TestCase):
 
             self.assertEqual(info["fps"], 12)
             self.assertEqual(info["robot_type"], "mock_uav")
-            self.assertEqual(info["features"]["video.ego_view"]["shape"], [4, 5, 3])
-            self.assertEqual(info["features"]["video.ego_view"]["info"]["video.pix_fmt"], "yuv444p")
-            self.assertEqual(source_info["image_size"], [4, 5])
-            self.assertEqual(source_info["fps"], 12)
+            self.assertEqual(info["features"]["video.front_view"]["shape"], [4, 5, 3])
+            self.assertEqual(info["features"]["video.front_view"]["info"]["video.pix_fmt"], "yuv444p")
             self.assertEqual(tasks, [{"task_index": 0, "task": ""}])
             self.assertEqual(len(extras), 2)
             self.assertEqual(extras[0]["trajectory_id"], "traj_0")

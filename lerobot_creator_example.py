@@ -6,7 +6,7 @@
 3. 如何配置并调用 LeRobotCreator 完成数据集导出
 
 本示例包含三个相机视角：
-- video.ego_view      — 正前方视野
+- video.front_view    — 正前方视野
 - video.left_front    — 左前方视野
 - video.right_front   — 右前方视野
 
@@ -71,7 +71,7 @@ FEATURES = {
         "names": {"axes": POSE_AXES},
     },
     # 正前方视野（RGB video）
-    "video.ego_view": {
+    "video.front_view": {
         "dtype": "video",
         "shape": (IMAGE_HEIGHT, IMAGE_WIDTH, 3),
         "names": ["height", "width", "channels"],
@@ -102,7 +102,7 @@ FEATURES = {
 # ---------------------------------------------------------------------------
 # 每个视角的内参矩阵 K（pinhole 模型）
 CAMERA_INTRINSICS = {
-    "video.ego_view": [500.0, 500.0, 320.0, 240.0],       # [fx, fy, cx, cy]
+    "video.front_view": [500.0, 500.0, 320.0, 240.0],      # [fx, fy, cx, cy]
     "video.left_front": [480.0, 480.0, 320.0, 240.0],
     "video.right_front": [480.0, 480.0, 320.0, 240.0],
 }
@@ -114,7 +114,7 @@ CAMERA_INTRINSICS = {
 #   目前设定机体坐标系和相机坐标系的原点重合，实际应用中通常会有安装偏移（T_body<-camera 中的平移部分）
 BODY_FROM_CAMERA = {
     # 正前方相机：OpenCV -> body 的标准变换
-    "video.ego_view": np.array([
+    "video.front_view": np.array([
         [0, 0, 1, 0],
         [-1, 0, 0, 0],
         [0, -1, 0, 0],
@@ -169,7 +169,7 @@ class MockTraj(Traj):
             "{video_key}.body_from_camera"   — T_{body<-camera}
         """
         meta = {}
-        for video_key in ["video.ego_view", "video.left_front", "video.right_front"]:
+        for video_key in ["video.front_view", "video.left_front", "video.right_front"]:
             meta[f"{video_key}.K"] = CAMERA_INTRINSICS[video_key]
             meta[f"{video_key}.body_from_camera"] = BODY_FROM_CAMERA[video_key]
         return meta
@@ -193,14 +193,14 @@ class MockTraj(Traj):
             )
 
             # 合成图像：为每个视角生成带颜色区分的测试图
-            ego_img = np.full((IMAGE_HEIGHT, IMAGE_WIDTH, 3), [100, 150, 200], dtype=np.uint8)
+            front_img = np.full((IMAGE_HEIGHT, IMAGE_WIDTH, 3), [100, 150, 200], dtype=np.uint8)
             left_img = np.full((IMAGE_HEIGHT, IMAGE_WIDTH, 3), [200, 100, 150], dtype=np.uint8)
             right_img = np.full((IMAGE_HEIGHT, IMAGE_WIDTH, 3), [150, 200, 100], dtype=np.uint8)
 
             frame = {
                 "annotation.human.action.task_description": np.array([self._task_idx], dtype=np.int32),
                 "observation.state": state,
-                "video.ego_view": ego_img,
+                "video.front_view": front_img,
                 "video.left_front": left_img,
                 "video.right_front": right_img,
                 "action": state.copy(),

@@ -74,8 +74,8 @@ class RealWalkingTrajectory(RGBPoseTrajectory):
     def metadata(self) -> dict[str, Any]:
         k = self._camera_intrinsics_mean
         return {
-            "video.ego_view.K": [k["fx"], k["fy"], k["cx"], k["cy"]],
-            "video.ego_view.body_from_camera": self.body_from_camera,
+            "video.front_view.K": [k["fx"], k["fy"], k["cx"], k["cy"]],
+            "video.front_view.body_from_camera": self.body_from_camera,
         }
 
     def __len__(self) -> int:
