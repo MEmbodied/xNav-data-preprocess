@@ -3,7 +3,7 @@ Visualize a single episode from an RGB-Pose LeRobot dataset.
 
 Produces a side-by-side video:
   - Left: 3D trajectory of the body pose (observation.state)
-  - Right: Original RGB front-view video
+  - Right: Original RGB front video
 
 Usage:
     uv run examples/rgb_pose_example/visualize_episode.py \
@@ -35,7 +35,7 @@ def load_episode(dataset_dir: Path, episode_index: int):
     chunk_idx = episode_index // chunk_size
 
     parquet_path = dataset_dir / f"data/chunk-{chunk_idx:03d}/episode_{episode_index:06d}.parquet"
-    video_path = dataset_dir / f"videos/chunk-{chunk_idx:03d}/video.front_view/episode_{episode_index:06d}.mp4"
+    video_path = dataset_dir / f"videos/chunk-{chunk_idx:03d}/video.front/episode_{episode_index:06d}.mp4"
 
     df = pd.read_parquet(parquet_path)
     states = np.stack(df["observation.state"].values)  # (N, 7)

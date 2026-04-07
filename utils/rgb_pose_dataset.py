@@ -65,7 +65,7 @@ For each point, the exporter writes:
 
 - `annotation.human.action.task_description`
   Task index, resolved through LeRobot task metadata.
-- `video.front_view`
+- `video.front`
   Raw RGB image.
 - `observation.state`
   Body pose as a 7D vector `[tx, ty, tz, qx, qy, qz, qw]`.
@@ -108,7 +108,7 @@ from utils.coordinate import homogeneous_inv
 from utils.lerobot.lerobot_creater import LeRobotCreator
 
 TASK_DESCRIPTION_KEY = "annotation.human.action.task_description"
-VIDEO_KEY = "video.front_view"
+VIDEO_KEY = "video.front"
 STATE_KEY = "observation.state"
 ACTION_KEY = "action"
 POSE_AXES = ["tx", "ty", "tz", "qx", "qy", "qz", "qw"]

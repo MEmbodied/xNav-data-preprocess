@@ -126,8 +126,8 @@ class RGBPoseDatasetTests(unittest.TestCase):
 
             self.assertEqual(info["fps"], 12)
             self.assertEqual(info["robot_type"], "mock_uav")
-            self.assertEqual(info["features"]["video.front_view"]["shape"], [4, 5, 3])
-            self.assertEqual(info["features"]["video.front_view"]["info"]["video.pix_fmt"], "yuv444p")
+            self.assertEqual(info["features"]["video.front"]["shape"], [4, 5, 3])
+            self.assertEqual(info["features"]["video.front"]["info"]["video.pix_fmt"], "yuv444p")
             self.assertEqual(tasks, [{"task_index": 0, "task": ""}])
             self.assertEqual(len(extras), 2)
             self.assertEqual(extras[0]["trajectory_id"], "traj_0")

@@ -111,8 +111,8 @@ class CityWalkerTrajectory(RGBPoseTrajectory):
     @property
     def metadata(self) -> dict[str, Any]:
         return {
-            "video.front_view.K": None,  # no intrinsics available
-            "video.front_view.body_from_camera": _BODY_FROM_CAMERA_OPENCV,
+            "video.front.K": None,  # no intrinsics available
+            "video.front.body_from_camera": _BODY_FROM_CAMERA_OPENCV,
         }
 
     def __len__(self) -> int:

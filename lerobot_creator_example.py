@@ -6,7 +6,7 @@
 3. 如何配置并调用 LeRobotCreator 完成数据集导出
 
 本示例包含三个相机视角：
-- video.front_view    — 正前方视野
+- video.front         — 正前方视野
 - video.left_front    — 左前方视野
 - video.right_front   — 右前方视野
 
@@ -71,7 +71,7 @@ FEATURES = {
         "names": {"axes": POSE_AXES},
     },
     # 正前方视野（RGB video）
-    "video.front_view": {
+    "video.front": {
         "dtype": "video",
         "shape": (IMAGE_HEIGHT, IMAGE_WIDTH, 3),
         "names": ["height", "width", "channels"],
@@ -88,7 +88,7 @@ FEATURES = {
         "shape": (IMAGE_HEIGHT, IMAGE_WIDTH, 3),
         "names": ["height", "width", "channels"],
     },
-    # 动作，格式同 observation.state
+    # 动作，内容同observation.state
     "action": {
         "dtype": "float32",
         "shape": (7,),
@@ -102,7 +102,7 @@ FEATURES = {
 # ---------------------------------------------------------------------------
 # 每个视角的内参矩阵 K（pinhole 模型）
 CAMERA_INTRINSICS = {
-    "video.front_view": [500.0, 500.0, 320.0, 240.0],      # [fx, fy, cx, cy]
+    "video.front": [500.0, 500.0, 320.0, 240.0],           # [fx, fy, cx, cy]
     "video.left_front": [480.0, 480.0, 320.0, 240.0],
     "video.right_front": [480.0, 480.0, 320.0, 240.0],
 }
@@ -114,7 +114,7 @@ CAMERA_INTRINSICS = {
 #   目前设定机体坐标系和相机坐标系的原点重合，实际应用中通常会有安装偏移（T_body<-camera 中的平移部分）
 BODY_FROM_CAMERA = {
     # 正前方相机：OpenCV -> body 的标准变换
-    "video.front_view": np.array([
+    "video.front": np.array([
         [0, 0, 1, 0],
         [-1, 0, 0, 0],
         [0, -1, 0, 0],
@@ -169,7 +169,7 @@ class MockTraj(Traj):
             "{video_key}.body_from_camera"   — T_{body<-camera}
         """
         meta = {}
-        for video_key in ["video.front_view", "video.left_front", "video.right_front"]:
+        for video_key in ["video.front", "video.left_front", "video.right_front"]:
             meta[f"{video_key}.K"] = CAMERA_INTRINSICS[video_key]
             meta[f"{video_key}.body_from_camera"] = BODY_FROM_CAMERA[video_key]
         return meta
@@ -200,7 +200,7 @@ class MockTraj(Traj):
             frame = {
                 "annotation.human.action.task_description": np.array([self._task_idx], dtype=np.int32),
                 "observation.state": state,
-                "video.front_view": front_img,
+                "video.front": front_img,
                 "video.left_front": left_img,
                 "video.right_front": right_img,
                 "action": state.copy(),
