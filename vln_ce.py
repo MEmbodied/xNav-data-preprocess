@@ -18,6 +18,13 @@ parser.add_argument("--raw_dir", type=str, default="InternData-n1-demo", help="P
 parser.add_argument("--output_dir", type=str, default=".", help="Path to the output LeRobotDataset directory")
 parser.add_argument("--codec", type=str, default="h264", choices=["h264", "hevc", "libsvtav1"], help="Video codec to use for encoding")
 parser.add_argument("--num_processes", type=int, default=8, help="Number of processes for image writing")
+parser.add_argument(
+    "--viewpoint",
+    type=str,
+    default="125cm_0deg",
+    choices=["125cm_0deg", "125cm_30deg", "125cm_45deg", "60cm_15deg", "60cm_30deg"],
+    help="Viewpoint to use for poses, RGB frames, and relative-goal annotations",
+)
 args = parser.parse_args()
 
 
@@ -51,7 +58,7 @@ def port(
     def get_task_idx(task: str) -> int:
         return creator.add_task(task)
 
-    trajectories = traj_cls(raw_dir, get_task_idx=get_task_idx)
+    trajectories = traj_cls(raw_dir, get_task_idx=get_task_idx, *args, **kwargs)
 
     start_time = time.time()
     num_episodes = len(trajectories)
@@ -105,6 +112,7 @@ def main():
         traj_cls=VLN_CE_Trajectories,
         num_processes=args.num_processes,
         codec=args.codec,
+        viewpoint=args.viewpoint,
     )
     
     validate_dataset(dataset_name, root=root)

@@ -12,30 +12,20 @@ from scipy.spatial.transform import Rotation
 from utils.coordinate import homogeneous_inv
 
 class VLN_CE_Traj(Traj):
-    # [4, 4]
-    T_b_c = np.array([
-        [0, 0, 1, 0],
-        [-1, 0, 0, 0],
-        [0, -1, 0, 0],
-        [0, 0, 0, 1],
+    # 0deg reference: body +x forward/+y left/+z up, camera +x right/+y down/+z forward.
+    R_B_C_0 = np.array([
+        [0, 0, 1],
+        [-1, 0, 0],
+        [0, -1, 0],
     ], dtype=np.float32)
 
-    # T_c_b == homogeneous_inv(T_b_c)
-    # [4, 4]
-    T_c_b = np.array([[ 0., -1.,  0., -0.],
-       [ 0.,  0., -1., -0.],
-       [ 1.,  0.,  0., -0.],
-       [ 0.,  0.,  0.,  1.]
-    ], dtype=np.float32)
-
-    goal_keys = [
-        "relative_goal_frame_id.125cm_30deg",
-        "relative_goal_frame_id.125cm_45deg",
-        "relative_goal_frame_id.60cm_15deg",
-        "relative_goal_frame_id.60cm_30deg",
-    ]
-
-    REASON_COL = "125cm_0deg_reason"
+    SUPPORTED_VIEWPOINTS = (
+        "125cm_0deg",
+        "125cm_30deg",
+        "125cm_45deg",
+        "60cm_15deg",
+        "60cm_30deg",
+    )
 
     @property
     def metadata(self) -> dict:
@@ -43,14 +33,52 @@ class VLN_CE_Traj(Traj):
             "T_b_c": self.T_b_c,
         }
 
-    def __init__(self, parquet_path: Path, images: List[Path], task: str, task_idx: int):
+    @staticmethod
+    def _extract_pitch_deg(viewpoint: str) -> float:
+        try:
+            return float(viewpoint.split("_")[1].removesuffix("deg"))
+        except (IndexError, ValueError) as exc:
+            raise ValueError(f"Invalid viewpoint format: {viewpoint}") from exc
+
+    @classmethod
+    def _build_camera_body_transforms(cls, viewpoint: str) -> tuple[np.ndarray, np.ndarray]:
+        pitch_deg = cls._extract_pitch_deg(viewpoint)
+        pitch_rad = np.deg2rad(pitch_deg)
+        cos_theta = np.cos(pitch_rad)
+        sin_theta = np.sin(pitch_rad)
+
+        # Positive pitch means the camera tilts downward around body +y.
+        R_pitch_body = np.array([
+            [cos_theta, 0.0, sin_theta],
+            [0.0, 1.0, 0.0],
+            [-sin_theta, 0.0, cos_theta],
+        ], dtype=np.float32)
+        R_b_c = R_pitch_body @ cls.R_B_C_0
+        R_c_b = R_b_c.T
+
+        T_b_c = np.eye(4, dtype=np.float32)
+        T_b_c[:3, :3] = R_b_c
+
+        T_c_b = np.eye(4, dtype=np.float32)
+        T_c_b[:3, :3] = R_c_b
+        return T_b_c, T_c_b
+
+    def __init__(self, parquet_path: Path, images: List[Path], task: str, task_idx: int, viewpoint: str):
         self.parquet_path = parquet_path
         self.images = images
         self.task = task
         self.task_idx = task_idx
+        self.viewpoint = viewpoint
+        self.T_b_c, self.T_c_b = self._build_camera_body_transforms(viewpoint)
+        self.pose_col = f"pose.{viewpoint}"
+        self.goal_key = f"relative_goal_frame_id.{viewpoint}"
+        self.reason_col = f"{viewpoint}_reason"
 
         # Read parquet
         self.df = pd.read_parquet(self.parquet_path)
+
+        if self.pose_col not in self.df.columns:
+            raise KeyError(f"Missing pose column {self.pose_col} in {self.parquet_path}")
 
         assert len(self.df) == len(self.images), \
             f"Length mismatch between parquet {len(self.df)} and images {len(self.images)} in {self.parquet_path}"
@@ -60,8 +88,8 @@ class VLN_CE_Traj(Traj):
     def _process_traj(self):
         # Process Poses
         # Ensure it's a stacked numpy array [N, 4, 4]
-        # df["pose.125cm_0deg"] usually contains arrays/lists
-        pose_col = self.df["pose.125cm_0deg"].to_numpy()
+        # df[f"pose.{viewpoint}"] contains per-frame camera poses
+        pose_col = self.df[self.pose_col].to_numpy()
         T_w_c = np.array([np.stack(p) for p in pose_col])
         
         # Calculate Body Poses
@@ -90,45 +118,9 @@ class VLN_CE_Traj(Traj):
         last_delta = np.zeros((1, 4), dtype=np.float32) 
         self.action_deltas = np.concatenate([deltas, last_delta], axis=0) # [N, 4]
         
-        # Calculate Goal Actions (last 4 values)
-        # Collect arrays for all keys that exist in the dataframe
-        available_goal_arrays = []
-        for key in self.goal_keys:
-            if key in self.df.columns:
-                available_goal_arrays.append(self.df[key].to_numpy())
-        
-        if not available_goal_arrays:
-            raise KeyError(f"None of the goal keys {self.goal_keys} found in dataframe columns: {self.df.columns}")
-        
-        # For each row, use the first key (in order) whose value is not -1;
-        # fall back to -1 if all available keys have -1 for that row.
-        goal_frame_idx = np.full(self.length, -1, dtype=available_goal_arrays[0].dtype)
-        for arr in reversed(available_goal_arrays):
-            mask = arr != -1
-            goal_frame_idx[mask] = arr[mask]
-
-        actions_raw = self.df["action"].to_numpy()
-        refined_goals = goal_frame_idx.copy()
+        # Calculate Goal Actions (last 4 values) using a fixed lookahead window.
         N = self.length
-        
-        # Refine goals based on 'forward' action logic
-        for i in range(N):
-            if refined_goals[i] != -1:
-                continue
-            
-            found = -1
-            for j in range(i + 1, N):
-                if actions_raw[j] == 1: # 1 is 'forward'
-                    found = j
-                    break
-            
-            if found != -1:
-                refined_goals[i] = found - i
-            else:
-                refined_goals[i] = N - 1 - i
-        
-        # Calculate relative pose to refined goal
-        target_indices = refined_goals + np.arange(N)
+        target_indices = np.minimum(np.arange(N) + 20, N - 1)
         
         T_body_goal = T_body_b[target_indices] # [N, 4, 4]
         T_b_body = homogeneous_inv(T_body_b) # [N, 4, 4]
@@ -154,9 +146,9 @@ class VLN_CE_Traj(Traj):
     
     def __iter__(self) -> Iterable[tuple[dict, str]]:
         self._process_traj()
-        has_reason = self.REASON_COL in self.df.columns
+        has_reason = self.reason_col in self.df.columns
         for i in range(self.length):
-            reason = str(self.df.iloc[i][self.REASON_COL]) if has_reason else ""
+            reason = str(self.df.iloc[i][self.reason_col]) if has_reason else ""
             if pd.isna(reason):
                 reason = ""
             frame = {
@@ -218,9 +210,14 @@ class VLN_CE_Trajectories(Trajectories):
         },
     }
 
-    def __init__(self, data_path: str, get_task_idx: Callable[[str], int]):
+    def __init__(self, data_path: str, get_task_idx: Callable[[str], int], viewpoint: str = "125cm_0deg"):
         self.data_path = Path(data_path)
         self.get_task_idx = get_task_idx
+        if viewpoint not in VLN_CE_Traj.SUPPORTED_VIEWPOINTS:
+            raise ValueError(
+                f"Unsupported viewpoint {viewpoint}. Supported: {VLN_CE_Traj.SUPPORTED_VIEWPOINTS}"
+            )
+        self.viewpoint = viewpoint
         self.parquet_files = []
         
         # Find all 'data' directories.
@@ -284,7 +281,7 @@ class VLN_CE_Trajectories(Trajectories):
             video_chunk_dir = scene_dir / "videos" / chunk_name
             
             # Primary path as per instruction
-            images_dir = video_chunk_dir / "observation.images.rgb.125cm_0deg"
+            images_dir = video_chunk_dir / f"observation.images.rgb.{self.viewpoint}"
 
             # Image pattern: episode_000000_0.jpg
             # The last number is the frame index
@@ -295,7 +292,13 @@ class VLN_CE_Trajectories(Trajectories):
             )
 
             try:
-                traj = VLN_CE_Traj(parquet_file, images, task=task, task_idx=task_idx)
+                traj = VLN_CE_Traj(
+                    parquet_file,
+                    images,
+                    task=task,
+                    task_idx=task_idx,
+                    viewpoint=self.viewpoint,
+                )
                 yield traj
             except Exception:
                 print(f"Failed to load trajectory from {parquet_file}")
