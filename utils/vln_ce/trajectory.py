@@ -12,6 +12,8 @@ from scipy.spatial.transform import Rotation
 from utils.coordinate import homogeneous_inv
 
 class VLN_CE_Traj(Traj):
+    HFOV_DEG = 79.0
+
     # 0deg reference: body +x forward/+y left/+z up, camera +x right/+y down/+z forward.
     R_B_C_0 = np.array([
         [0, 0, 1],
@@ -30,7 +32,8 @@ class VLN_CE_Traj(Traj):
     @property
     def metadata(self) -> dict:
         return {
-            "T_b_c": self.T_b_c,
+            "video.front.K": self.camera_intrinsics,
+            "video.front.body_from_camera": self.T_b_c,
         }
 
     @staticmethod
@@ -63,6 +66,16 @@ class VLN_CE_Traj(Traj):
         T_c_b[:3, :3] = R_c_b
         return T_b_c, T_c_b
 
+    @classmethod
+    def _build_camera_intrinsics(cls, width: int, height: int) -> np.ndarray:
+        hfov_rad = np.deg2rad(cls.HFOV_DEG)
+        fx = (width / 2.0) / np.tan(hfov_rad / 2.0)
+        vfov_rad = 2.0 * np.arctan((height / width) * np.tan(hfov_rad / 2.0))
+        fy = (height / 2.0) / np.tan(vfov_rad / 2.0)
+        cx = (width - 1) / 2.0
+        cy = (height - 1) / 2.0
+        return np.array([fx, fy, cx, cy], dtype=np.float32)
+
     def __init__(self, parquet_path: Path, images: List[Path], task: str, task_idx: int, viewpoint: str):
         self.parquet_path = parquet_path
         self.images = images
@@ -71,7 +84,6 @@ class VLN_CE_Traj(Traj):
         self.viewpoint = viewpoint
         self.T_b_c, self.T_c_b = self._build_camera_body_transforms(viewpoint)
         self.pose_col = f"pose.{viewpoint}"
-        self.goal_key = f"relative_goal_frame_id.{viewpoint}"
         self.reason_col = f"{viewpoint}_reason"
 
         # Read parquet
@@ -84,6 +96,12 @@ class VLN_CE_Traj(Traj):
             f"Length mismatch between parquet {len(self.df)} and images {len(self.images)} in {self.parquet_path}"
 
         self.length = len(self.df)
+        if self.length == 0:
+            raise ValueError(f"Empty trajectory in {self.parquet_path}")
+
+        with Image.open(self.images[0]) as image:
+            self.image_width, self.image_height = image.size
+        self.camera_intrinsics = self._build_camera_intrinsics(self.image_width, self.image_height)
 
     def _process_traj(self):
         # Process Poses
@@ -114,8 +132,8 @@ class VLN_CE_Traj(Traj):
         T_current_next = T_b_current_body @ T_body_b_next
         deltas = self.get_poses(T_current_next)
         
-        # Pad last frame with identity (no movement)
-        last_delta = np.zeros((1, 4), dtype=np.float32) 
+        # Pad last frame with identity pose (no movement).
+        last_delta = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]], dtype=np.float32)
         self.action_deltas = np.concatenate([deltas, last_delta], axis=0) # [N, 4]
         
         # Calculate Goal Actions (last 4 values) using a fixed lookahead window.
@@ -129,17 +147,16 @@ class VLN_CE_Traj(Traj):
 
     def get_poses(self, T: np.ndarray) -> np.ndarray:
         """
-        Get poses in [x, y, z, yaw] format.
+        Get poses in [tx, ty, tz, qx, qy, qz, qw] format.
         Args:
             T: [N, 4, 4]
         Returns:
-            poses: [N, 4]
+            poses: [N, 7]
         """
-        # Yaw extraction (ZYX euler)
         R = T[:, :3, :3]
-        yaw, pitch, roll = Rotation.from_matrix(R).as_euler('ZYX', degrees=True).T
         pos = T[:, :3, 3]
-        return np.concatenate([pos, yaw[:, None]], axis=1).astype(np.float32)
+        quat = Rotation.from_matrix(R).as_quat().astype(np.float32)
+        return np.concatenate([pos, quat], axis=1).astype(np.float32)
 
     def __len__(self) -> int:
         return self.length
@@ -154,7 +171,7 @@ class VLN_CE_Traj(Traj):
             frame = {
                 "annotation.human.action.task_description": np.array([self.task_idx], dtype=np.int32),
                 "observation.state": self.poses_body[i],
-                "video.ego_view": np.array(Image.open(self.images[i]).convert("RGB")),
+                "video.front": np.array(Image.open(self.images[i]).convert("RGB")),
                 "action": np.concatenate([self.action_deltas[i], self.action_goals[i]]).astype(np.float32),
                 "extra.cot": reason,
             }
@@ -177,13 +194,13 @@ class VLN_CE_Trajectories(Trajectories):
         # The drone's pose in the first frame of the trajectory.
         "observation.state": {
             "dtype": "float32",
-            "shape": (4,),
+            "shape": (7,),
             "names": {
-                "axes": ["x", "y", "z", "yaw"],
+                "axes": ["tx", "ty", "tz", "qx", "qy", "qz", "qw"],
             },
         },
         # The primary video feed from the drone's ego-centric camera.
-        "video.ego_view": {
+        "video.front": {
             "dtype": "video",
             "shape": (480, 640, 3),
             "names": [
@@ -197,9 +214,12 @@ class VLN_CE_Trajectories(Trajectories):
         # last 4 values are goal pose of the to the current frame
         "action": {
             "dtype": "float32",
-            "shape": (8,),
+            "shape": (14,),
             "names": {
-                "axes": ["x", "y", "z", "yaw", "farthest_x", "farthest_y", "farthest_z", "farthest_yaw"],
+                "axes": [
+                    "curr_to_next_tx", "curr_to_next_ty", "curr_to_next_tz", "curr_to_next_qx", "curr_to_next_qy", "curr_to_next_qz", "curr_to_next_qw",
+                    "curr_to_goal_tx", "curr_to_goal_ty", "curr_to_goal_tz", "curr_to_goal_qx", "curr_to_goal_qy", "curr_to_goal_qz", "curr_to_goal_qw",
+                ],
             },
         },
         # Per-frame chain-of-thought reasoning from CoT annotations.
